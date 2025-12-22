@@ -33,18 +33,17 @@ const char HTML_PORTAL[] PROGMEM = R"html(
         label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
         input, select { width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; transition: border-color 0.2s; }
         input:focus, select:focus { outline: none; border-color: #667eea; }
-        .btn-container { margin-top: 25px; }
+        .input-password { position: relative; }
+        .input-password input { padding-right: 45px; }
+        .toggle-pass { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #888; font-size: 18px; padding: 5px; }
+        .toggle-pass:hover { color: #667eea; }
+        .btn-container { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s; }
         .btn:active { transform: scale(0.98); }
         .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
         .btn-primary:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
-        .divider { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 12px; }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #ddd; }
-        .divider span { padding: 0 15px; }
-        .danger-zone { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; padding: 20px; }
-        .danger-zone .section-title { color: #c53030; }
-        .btn-danger { background: #fff; color: #c53030; border: 2px solid #fc8181; }
-        .btn-danger:hover { background: #c53030; color: white; }
+        .btn-secondary { background: #fff; color: #666; border: 2px solid #ddd; }
+        .btn-secondary:hover { border-color: #999; color: #333; }
         .status { padding: 12px; margin-top: 15px; border-radius: 8px; background: #c6f6d5; color: #276749; font-size: 14px; text-align: center; }
         .hidden { display: none; }
         .hint { font-size: 12px; color: #888; margin-top: 4px; }
@@ -57,7 +56,7 @@ const char HTML_PORTAL[] PROGMEM = R"html(
         
         <form method="POST" action="/save">
             <div class="section">
-                <div class="section-title">🔐 Credenciales IoT</div>
+                <div class="section-title">Credenciales IoT</div>
                 <div class="form-group">
                     <label for="clientid">Client ID</label>
                     <input type="text" id="clientid" name="clientid" value="{{CLIENT_ID}}" placeholder="Ej: device_abc123" required>
@@ -65,7 +64,10 @@ const char HTML_PORTAL[] PROGMEM = R"html(
                 
                 <div class="form-group">
                     <label for="token">Token</label>
-                    <input type="password" id="token" name="token" value="{{TOKEN}}" placeholder="Token de autenticacion" required>
+                    <div class="input-password">
+                        <input type="password" id="token" name="token" value="{{TOKEN}}" placeholder="Token de autenticacion" required>
+                        <button type="button" class="toggle-pass" onclick="togglePassword('token', this)">&#128065;</button>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -75,7 +77,7 @@ const char HTML_PORTAL[] PROGMEM = R"html(
             </div>
             
             <div class="section">
-                <div class="section-title">📶 Conexion WiFi</div>
+                <div class="section-title">Conexion WiFi</div>
                 <div class="form-group">
                     <label for="ssid_select">Redes disponibles</label>
                     <select id="ssid_select">
@@ -91,27 +93,34 @@ const char HTML_PORTAL[] PROGMEM = R"html(
                 
                 <div class="form-group">
                     <label for="pass">Contrasena WiFi</label>
-                    <input type="password" id="pass" name="pass" value="{{PASS}}" placeholder="Contrasena de la red">
+                    <div class="input-password">
+                        <input type="password" id="pass" name="pass" value="{{PASS}}" placeholder="Contrasena de la red">
+                        <button type="button" class="toggle-pass" onclick="togglePassword('pass', this)">&#128065;</button>
+                    </div>
                 </div>
             </div>
             
             <div class="btn-container">
-                <button type="submit" class="btn btn-primary">💾 Guardar y Conectar</button>
+                <button type="submit" class="btn btn-primary">Guardar y Conectar</button>
+                <button type="button" class="btn btn-secondary" onclick="resetConfig()">Borrar configuracion y reiniciar</button>
             </div>
         </form>
-        
-        <div class="divider"><span>Opciones avanzadas</span></div>
-        
-        <div class="danger-zone">
-            <div class="section-title">⚠️ Zona de peligro</div>
-            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0;">Esto borrara toda la configuracion guardada y reiniciara el dispositivo.</p>
-            <button type="button" class="btn btn-danger" onclick="resetConfig()">🗑️ Borrar configuracion y reiniciar</button>
-        </div>
         
         <div id="status" class="status hidden"></div>
     </div>
 
     <script>
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.style.color = '#667eea';
+            } else {
+                input.type = 'password';
+                btn.style.color = '#888';
+            }
+        }
+        
         function getUrlParam(name) {
             const urlParams = new URLSearchParams(window.location.search);
             return urlParams.get(name) || urlParams.get(name.toLowerCase());
@@ -135,17 +144,26 @@ const char HTML_PORTAL[] PROGMEM = R"html(
             loadNetworks();
         };
         
+        function getSignalBars(rssi) {
+            if (rssi >= -50) return '▂▄▆█';
+            if (rssi >= -60) return '▂▄▆░';
+            if (rssi >= -70) return '▂▄░░';
+            return '▂░░░';
+        }
+        
         function loadNetworks() {
             fetch('/scan')
                 .then(response => response.json())
                 .then(data => {
                     const select = document.getElementById('ssid_select');
-                    select.innerHTML = '<option value="">Seleccionar red escaneada...</option>';
+                    select.innerHTML = '<option value="">Seleccionar red...</option>';
                     
                     data.networks.forEach(network => {
                         const option = document.createElement('option');
                         option.value = network.ssid;
-                        option.textContent = network.ssid + ' (' + network.rssi + 'dBm)' + (network.enc ? ' 🔒' : '');
+                        const signal = getSignalBars(network.rssi);
+                        const lock = network.enc ? ' *' : '';
+                        option.textContent = network.ssid + ' ' + signal + lock;
                         select.appendChild(option);
                     });
                 })
@@ -162,10 +180,10 @@ const char HTML_PORTAL[] PROGMEM = R"html(
         };
         
         function resetConfig() {
-            if (confirm('⚠️ ATENCION\\n\\nEsto borrara TODA la configuracion:\\n- Credenciales IoT\\n- Datos de WiFi\\n\\nEl dispositivo se reiniciara.\\n\\n¿Continuar?')) {
+            if (confirm('Se borrara la configuracion guardada y el dispositivo se reiniciara.\\n\\n¿Continuar?')) {
                 fetch('/reset', { method: 'POST' })
                     .then(() => {
-                        document.getElementById('status').textContent = '✓ Configuracion borrada. Reiniciando dispositivo...';
+                        document.getElementById('status').textContent = 'Configuracion borrada. Reiniciando...';
                         document.getElementById('status').classList.remove('hidden');
                     });
             }
