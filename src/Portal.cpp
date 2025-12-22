@@ -21,59 +21,92 @@ const char HTML_PORTAL[] PROGMEM = R"html(
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{APP_NAME}} Setup</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 480px; margin: 0 auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h1 { color: #333; text-align: center; margin: 0 0 10px 0; font-size: 24px; }
+        .subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+        .section { background: #f8f9fa; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+        .section-title { font-size: 14px; font-weight: 600; color: #667eea; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; color: #555; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { background: #007cba; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; }
-        button:hover { background: #005a8a; }
-        .danger { background: #dc3545; }
-        .danger:hover { background: #c82333; }
-        .status { padding: 10px; margin: 10px 0; border-radius: 4px; background: #d4edda; color: #155724; }
+        .form-group:last-child { margin-bottom: 0; }
+        label { display: block; margin-bottom: 6px; font-weight: 500; color: #444; font-size: 14px; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; transition: border-color 0.2s; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        .btn-container { margin-top: 25px; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s; }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); }
+        .btn-primary:hover { box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
+        .divider { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 12px; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #ddd; }
+        .divider span { padding: 0 15px; }
+        .danger-zone { background: #fff5f5; border: 1px solid #fed7d7; border-radius: 12px; padding: 20px; }
+        .danger-zone .section-title { color: #c53030; }
+        .btn-danger { background: #fff; color: #c53030; border: 2px solid #fc8181; }
+        .btn-danger:hover { background: #c53030; color: white; }
+        .status { padding: 12px; margin-top: 15px; border-radius: 8px; background: #c6f6d5; color: #276749; font-size: 14px; text-align: center; }
         .hidden { display: none; }
+        .hint { font-size: 12px; color: #888; margin-top: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>{{APP_NAME}} Setup</h1>
+        <h1>{{APP_NAME}}</h1>
+        <p class="subtitle">Configuracion del dispositivo IoT</p>
+        
         <form method="POST" action="/save">
-            <div class="form-group">
-                <label for="clientid">Client ID:</label>
-                <input type="text" id="clientid" name="clientid" value="{{CLIENT_ID}}" required>
+            <div class="section">
+                <div class="section-title">🔐 Credenciales IoT</div>
+                <div class="form-group">
+                    <label for="clientid">Client ID</label>
+                    <input type="text" id="clientid" name="clientid" value="{{CLIENT_ID}}" placeholder="Ej: device_abc123" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="token">Token</label>
+                    <input type="password" id="token" name="token" value="{{TOKEN}}" placeholder="Token de autenticacion" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="publicid">Public ID</label>
+                    <input type="text" id="publicid" name="publicid" value="{{PUBLIC_ID}}" placeholder="Identificador publico" required>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="token">Token:</label>
-                <input type="password" id="token" name="token" value="{{TOKEN}}" required>
+            <div class="section">
+                <div class="section-title">📶 Conexion WiFi</div>
+                <div class="form-group">
+                    <label for="ssid_select">Redes disponibles</label>
+                    <select id="ssid_select">
+                        <option value="">Cargando redes...</option>
+                    </select>
+                    <p class="hint">Selecciona una red o escribe el nombre manualmente</p>
+                </div>
+                
+                <div class="form-group">
+                    <label for="ssid">Nombre de red (SSID)</label>
+                    <input type="text" id="ssid" name="ssid" value="{{SSID}}" placeholder="Nombre de tu red WiFi" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pass">Contrasena WiFi</label>
+                    <input type="password" id="pass" name="pass" value="{{PASS}}" placeholder="Contrasena de la red">
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="publicid">Public ID:</label>
-                <input type="text" id="publicid" name="publicid" value="{{PUBLIC_ID}}" required>
+            <div class="btn-container">
+                <button type="submit" class="btn btn-primary">💾 Guardar y Conectar</button>
             </div>
-            
-            <div class="form-group">
-                <label for="ssid_select">Red WiFi (escaneadas):</label>
-                <select id="ssid_select">
-                    <option value="">Cargando redes...</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label for="ssid">SSID (manual):</label>
-                <input type="text" id="ssid" name="ssid" value="{{SSID}}" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="pass">Contraseña WiFi:</label>
-                <input type="password" id="pass" name="pass" value="{{PASS}}">
-            </div>
-            
-            <button type="submit">Guardar y Conectar</button>
-            <button type="button" class="danger" onclick="resetConfig()">Reset Config</button>
         </form>
+        
+        <div class="divider"><span>Opciones avanzadas</span></div>
+        
+        <div class="danger-zone">
+            <div class="section-title">⚠️ Zona de peligro</div>
+            <p style="font-size: 13px; color: #666; margin: 0 0 15px 0;">Esto borrara toda la configuracion guardada y reiniciara el dispositivo.</p>
+            <button type="button" class="btn btn-danger" onclick="resetConfig()">🗑️ Borrar configuracion y reiniciar</button>
+        </div>
         
         <div id="status" class="status hidden"></div>
     </div>
@@ -129,12 +162,11 @@ const char HTML_PORTAL[] PROGMEM = R"html(
         };
         
         function resetConfig() {
-            if (confirm('¿Estás seguro de que quieres resetear la configuración?')) {
+            if (confirm('⚠️ ATENCION\\n\\nEsto borrara TODA la configuracion:\\n- Credenciales IoT\\n- Datos de WiFi\\n\\nEl dispositivo se reiniciara.\\n\\n¿Continuar?')) {
                 fetch('/reset', { method: 'POST' })
                     .then(() => {
-                        document.getElementById('status').textContent = 'Configuración reseteada. Reiniciando...';
+                        document.getElementById('status').textContent = '✓ Configuracion borrada. Reiniciando dispositivo...';
                         document.getElementById('status').classList.remove('hidden');
-                        setTimeout(() => location.reload(), 2000);
                     });
             }
         }
