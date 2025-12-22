@@ -214,24 +214,31 @@ void handleRoot() {
 }
 
 void handleScan() {
+  Serial.println("[NET] Petición /scan recibida");
+  
   unsigned long now = millis();
   
-  if (now - lastScanTime < 3000 && scanResults.length() > 0) {
+  // Usar cache si el escaneo es reciente
+  if (now - lastScanTime < 5000 && scanResults.length() > 2) {
+    Serial.println("[NET] Usando cache de escaneo");
     server.send(200, "application/json", scanResults);
     return;
   }
 
   Serial.println("[NET] Escaneando redes WiFi...");
   
-  WiFi.mode(WIFI_AP_STA);
+  // NO cambiar el modo WiFi aquí - ya está configurado en startPortal()
+  // WiFi.mode(WIFI_AP_STA); // <-- REMOVIDO - causaba el problema
   
-  int n = WiFi.scanNetworks();
+  int n = WiFi.scanNetworks(false, false, false, 300);  // Scan más rápido
   
-  DynamicJsonDocument doc(2048);
+  DynamicJsonDocument doc(4096);
   JsonArray networks = doc.createNestedArray("networks");
   
+  Serial.printf("[NET] Encontradas %d redes\n", n);
+  
   if (n > 0) {
-    for (int i = 0; i < n; i++) {
+    for (int i = 0; i < n && i < 20; i++) {  // Limitar a 20 redes
       JsonObject net = networks.createNestedObject();
       net["ssid"] = WiFi.SSID(i);
       net["rssi"] = WiFi.RSSI(i);
@@ -239,11 +246,14 @@ void handleScan() {
     }
   }
   
+  scanResults = "";
   serializeJson(doc, scanResults);
   lastScanTime = now;
   
-  Serial.printf("[NET] Encontradas %d redes\n", n);
+  WiFi.scanDelete();  // Limpiar resultados del scan
+  
   server.send(200, "application/json", scanResults);
+  Serial.println("[NET] Respuesta /scan enviada");
 }
 
 void handleSave() {
@@ -293,24 +303,66 @@ void startPortal() {
   
   Serial.println("[NET] Iniciando portal cautivo...");
   
+  // Configurar modo AP+STA ANTES de todo
   WiFi.mode(WIFI_AP_STA);
+  delay(100);
+  
   WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
   WiFi.softAP(g_apName, "");
   
   Serial.printf("[NET] AP iniciado: %s en 192.168.4.1\n", g_apName);
   
+  // Hacer escaneo inicial de redes ANTES de iniciar el servidor
+  Serial.println("[NET] Escaneo inicial de redes...");
+  int n = WiFi.scanNetworks(false, false, false, 300);
+  Serial.printf("[NET] Escaneo inicial: %d redes encontradas\n", n);
+  
+  // Pre-generar el JSON de redes
+  DynamicJsonDocument doc(4096);
+  JsonArray networks = doc.createNestedArray("networks");
+  if (n > 0) {
+    for (int i = 0; i < n && i < 20; i++) {
+      JsonObject net = networks.createNestedObject();
+      net["ssid"] = WiFi.SSID(i);
+      net["rssi"] = WiFi.RSSI(i);
+      net["enc"] = (WiFi.encryptionType(i) != WIFI_AUTH_OPEN);
+    }
+  }
+  scanResults = "";
+  serializeJson(doc, scanResults);
+  lastScanTime = millis();
+  WiFi.scanDelete();
+  
+  // Iniciar DNS Server
   dnsServer.start(53, "*", IPAddress(192, 168, 4, 1));
   
+  // Registrar rutas del servidor web
   server.on("/", HTTP_GET, handleRoot);
   server.on("/scan", HTTP_GET, handleScan);
   server.on("/save", HTTP_POST, handleSave);
   server.on("/reset", HTTP_POST, handleReset);
   
-  server.on("/generate_204", handleCaptivePortal);
-  server.on("/hotspot-detect.html", handleCaptivePortal);
-  server.on("/favicon.ico", handleCaptivePortal);
+  // Rutas para portales cautivos de diferentes sistemas
+  server.on("/generate_204", HTTP_GET, handleCaptivePortal);
+  server.on("/hotspot-detect.html", HTTP_GET, handleCaptivePortal);
+  server.on("/favicon.ico", HTTP_GET, []() {
+    server.send(204);  // No content para favicon
+  });
   
-  server.onNotFound(handleCaptivePortal);
+  // Handler para rutas no encontradas
+  server.onNotFound([]() {
+    String uri = server.uri();
+    Serial.printf("[NET] Request no encontrado: %s\n", uri.c_str());
+    
+    // Si es una petición API, devolver error JSON
+    if (uri.startsWith("/api")) {
+      server.send(404, "application/json", "{\"error\":\"not found\"}");
+      return;
+    }
+    
+    // Para cualquier otra cosa, redirigir al portal
+    handleCaptivePortal();
+  });
   
   server.begin();
   portalActive = true;
