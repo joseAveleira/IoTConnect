@@ -1,0 +1,14 @@
+{
+  "name": "IoTConnect",
+  "version": "1.0.0",
+  "description": "Librería para conexión IoT simplificada con portal cautivo, WiFi y MQTT para ESP32.",
+  "keywords": ["iot", "mqtt", "wifi", "captive-portal", "esp32"],
+  "authors": [{"name": "Jose Aveleira", "maintainer": true}],
+  "repository": {"type": "git", "url": "https://github.com/joseAveleira/IoTConnect"},
+  "frameworks": "arduino",
+  "platforms": ["espressif32"],
+  "dependencies": {
+    "knolleary/PubSubClient": "^2.8",
+    "bblanchon/ArduinoJson": "^6.21"
+  }
+}
