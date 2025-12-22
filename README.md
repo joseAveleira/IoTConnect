@@ -32,14 +32,9 @@ Librería Arduino para ESP32 que simplifica la conexión con el servidor **[jose
 1. Entra en [joseaveleira.es/IoT](https://joseaveleira.es/IoT)
 2. Inicia sesión o crea una cuenta
 3. Añade un nuevo dispositivo
-4. Se generará un **QR de configuración**
+4. Se generará un **QR de configuración** con el `token` y `publicId` del dispositivo
 
-<!-- 
-Para añadir la imagen del QR tutorial:
-1. Crea una carpeta 'docs' en el repo
-2. Sube la imagen como 'docs/tutorial-qr.png'
--->
-![Tutorial de configuración](docs/tutorial-qr.png)
+![Dashboard IoT - Configuración de dispositivo](docs/tutorial-qr.png)
 
 ### Paso 2: Configura tu ESP32
 
@@ -49,19 +44,21 @@ Para añadir la imagen del QR tutorial:
 │  1️⃣  Enciende el dispositivo                            │
 │      └─> Aparecerá una red WiFi (ej: "MiApp-Setup")     │
 │                                                         │
-│  2️⃣  Conéctate a esa red WiFi                           │
+│  2️⃣  Conéctate a esa red WiFi desde tu móvil            │
 │      └─> Sin internet, es normal                        │
 │      └─> Mantén la conexión si pregunta                 │
 │                                                         │
 │  3️⃣  Escanea el QR del panel web                        │
-│      └─> Se abre la configuración automáticamente       │
-│      └─> Los datos se rellenan solos                    │
+│      └─> Se abre el portal cautivo automáticamente      │
+│      └─> El token y publicId se rellenan solos ✨       │
 │                                                         │
-│  4️⃣  Selecciona tu WiFi y contraseña                    │
+│  4️⃣  Solo introduce tu WiFi y contraseña                │
 │      └─> Pulsa "Conectar" y ¡listo!                     │
 │                                                         │
 └─────────────────────────────────────────────────────────┘
 ```
+
+> 💡 **¿Cómo funciona?** El QR contiene una URL con el `token` y `publicId` de tu dispositivo. Al escanearlo mientras estás conectado al portal cautivo del ESP32, estos datos se envían automáticamente al formulario. ¡Solo necesitas añadir los datos de tu WiFi!
 
 ### Paso 3: ¡Ya está conectado!
 
