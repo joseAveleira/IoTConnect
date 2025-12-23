@@ -34,15 +34,10 @@ const char HTML_PORTAL[] PROGMEM = R"html(
         input, select { width: 100%; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 15px; transition: border-color 0.2s; }
         input:focus, select:focus { outline: none; border-color: #667eea; }
         .input-password { position: relative; }
-        .input-password input { padding-right: 45px; }
-        .toggle-pass { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; }
-        .eye { width: 20px; height: 12px; border: 2px solid #888; border-radius: 70% 15%; position: relative; transform: rotate(0deg); }
-        .eye::before { content: ''; position: absolute; width: 6px; height: 6px; background: #888; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        .eye.visible { border-color: #667eea; }
-        .eye.visible::before { background: #667eea; }
-        .eye.hidden-pass::after { content: ''; position: absolute; width: 24px; height: 2px; background: #888; top: 50%; left: -2px; transform: translateY(-50%) rotate(-45deg); }
-        .toggle-pass:hover .eye { border-color: #667eea; }
-        .toggle-pass:hover .eye::before { background: #667eea; }
+        .input-password input { padding-right: 50px; }
+        .toggle-pass { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 5px; font-size: 12px; color: #888; }
+        .toggle-pass:hover { color: #667eea; }
+        .toggle-pass.visible { color: #667eea; }
         .btn-container { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
         .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.1s, box-shadow 0.2s; }
         .btn:active { transform: scale(0.98); }
@@ -72,7 +67,7 @@ const char HTML_PORTAL[] PROGMEM = R"html(
                     <label for="token">Token</label>
                     <div class="input-password">
                         <input type="password" id="token" name="token" value="{{TOKEN}}" placeholder="Token de autenticacion" required>
-                        <button type="button" class="toggle-pass" onclick="togglePassword('token', this)"><div class="eye hidden-pass"></div></button>
+                        <button type="button" class="toggle-pass" onclick="togglePassword('token', this)">Ver</button>
                     </div>
                 </div>
                 
@@ -101,7 +96,7 @@ const char HTML_PORTAL[] PROGMEM = R"html(
                     <label for="pass">Contrasena WiFi</label>
                     <div class="input-password">
                         <input type="password" id="pass" name="pass" value="{{PASS}}" placeholder="Contrasena de la red">
-                        <button type="button" class="toggle-pass" onclick="togglePassword('pass', this)"><div class="eye hidden-pass"></div></button>
+                        <button type="button" class="toggle-pass" onclick="togglePassword('pass', this)">Ver</button>
                     </div>
                 </div>
             </div>
@@ -118,15 +113,14 @@ const char HTML_PORTAL[] PROGMEM = R"html(
     <script>
         function togglePassword(inputId, btn) {
             const input = document.getElementById(inputId);
-            const eye = btn.querySelector('.eye');
             if (input.type === 'password') {
                 input.type = 'text';
-                eye.classList.remove('hidden-pass');
-                eye.classList.add('visible');
+                btn.textContent = 'Ocultar';
+                btn.classList.add('visible');
             } else {
                 input.type = 'password';
-                eye.classList.add('hidden-pass');
-                eye.classList.remove('visible');
+                btn.textContent = 'Ver';
+                btn.classList.remove('visible');
             }
         }
         
@@ -171,8 +165,7 @@ const char HTML_PORTAL[] PROGMEM = R"html(
                         const option = document.createElement('option');
                         option.value = network.ssid;
                         const signal = getSignal(network.rssi);
-                        const lock = network.enc ? ' *' : '';
-                        option.textContent = network.ssid + ' ' + signal + lock;
+                        option.textContent = network.ssid + ' ' + signal;
                         select.appendChild(option);
                     });
                 })
