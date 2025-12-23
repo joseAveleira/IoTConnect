@@ -11,6 +11,7 @@ void IoTConnectClass::begin(const char* apName, const char* appName) {
   _apName = apName;
   _appName = appName;
   _initialized = true;
+  bool justConfigured = false;  // Flag para saber si viene del portal
   
   Serial.begin(115200);
   Serial.printf("\n=== %s IoT Connect v1.0 ===\n", _appName);
@@ -19,6 +20,7 @@ void IoTConnectClass::begin(const char* apName, const char* appName) {
   loadConfig(g_cfg);
   
   if (!g_cfg.confirmed) {
+    justConfigured = true;  // Primera configuración
     enterPortalMode();
     while (!g_cfg.confirmed) {
       handlePortalLoop();
@@ -33,6 +35,7 @@ void IoTConnectClass::begin(const char* apName, const char* appName) {
     clearConfig();
     memset(&g_cfg, 0, sizeof(g_cfg));
     
+    justConfigured = true;  // Reconfiguración
     enterPortalMode();
     while (!g_cfg.confirmed) {
       handlePortalLoop();
@@ -58,6 +61,7 @@ void IoTConnectClass::begin(const char* apName, const char* appName) {
       clearConfig();
       memset(&g_cfg, 0, sizeof(g_cfg));
       
+      justConfigured = true;  // Reconfiguración tras fallo MQTT
       enterPortalMode();
       while (!g_cfg.confirmed) {
         handlePortalLoop();
@@ -75,11 +79,48 @@ void IoTConnectClass::begin(const char* apName, const char* appName) {
     }
   }
   
-  publishOkSync(g_cfg);
+  // Solo publicar sync si es primera configuración desde el portal
+  if (justConfigured) {
+    Serial.println("[IOT] Primera configuración, enviando sync...");
+    // Procesar varios loops antes del sync
+    for (int i = 0; i < 10; i++) {
+      mqttLoop();
+      delay(100);
+    }
+    
+    if (publishOkSync(g_cfg)) {
+      Serial.printf("[IOT] Sync enviado a %s/devices/sync\n", g_cfg.publicId);
+    } else {
+      Serial.println("[IOT] Error enviando sync");
+    }
+  }
   
-  Serial.printf("[IOT] %s conectado!\n", _appName);
+  // Procesar paquetes MQTT y estabilizar conexión ANTES de notificar
+  Serial.println("[IOT] Estabilizando conexión...");
+  for (int i = 0; i < 20; i++) {
+    mqttLoop();
+    delay(50);
+  }
+  
+  // Verificar que sigue conectado después de estabilizar
+  if (!isMqttConnected()) {
+    Serial.println("[IOT] Conexión perdida durante estabilización, reintentando...");
+    if (!mqttConnect(g_cfg)) {
+      Serial.println("[IOT] Reconexión fallida, reiniciando...");
+      ESP.restart();
+    }
+    // Estabilizar de nuevo
+    for (int i = 0; i < 20; i++) {
+      mqttLoop();
+      delay(50);
+    }
+  }
+  
+  Serial.printf("[IOT] %s conectado y estable!\n", _appName);
   _normalOperation = true;
   _wasConnected = true;
+  
+  // Ahora sí notificar - la conexión está estable
   notifyConnectionChange(true);
 }
 
@@ -113,8 +154,20 @@ void IoTConnectClass::handleNormalOperation() {
       _mqttFailCount = 0;
       
       if (!_wasConnected) {
-        _wasConnected = true;
-        notifyConnectionChange(true);
+        // Estabilizar conexión BIEN antes de notificar
+        Serial.println("[IOT] Reconexión detectada, estabilizando...");
+        for (int i = 0; i < 20; i++) {
+          if (!isMqttConnected()) break;
+          mqttLoop();
+          delay(50);
+        }
+        
+        // Solo notificar si sigue conectado
+        if (isMqttConnected()) {
+          _wasConnected = true;
+          Serial.println("[IOT] Conexión estable, notificando...");
+          notifyConnectionChange(true);
+        }
       }
     } else {
       if (_wasConnected) {
@@ -154,12 +207,12 @@ bool IoTConnectClass::isConfigMode() {
 }
 
 bool IoTConnectClass::publish(const char* topic, const char* payload, bool retained) {
-  if (!isReady()) return false;
+  if (!isReady() || !isMqttStable()) return false;
   return mqttPublish(topic, payload, retained);
 }
 
 bool IoTConnectClass::subscribe(const char* topic) {
-  if (!isReady()) return false;
+  if (!isReady() || !isMqttStable()) return false;
   return mqttSubscribe(topic);
 }
 

@@ -20,4 +20,5 @@ void setMqttMessageCallback(InternalMqttCallback callback);
 
 // Estado del cliente MQTT
 bool isMqttConnected();
+bool isMqttStable();
 int getMqttFailCount();
