@@ -436,15 +436,26 @@ void startPortal() {
 
 void stopPortal() {
   if (!portalActive) return;
-  
-  Serial.println("[NET] Deteniendo portal cautivo...");
-  
+
+  // Grace period: mantener el AP unos segundos mas para que el navegador del
+  // usuario reciba la respuesta de /save y renderice la pagina de exito ANTES
+  // de que la red desaparezca. Sin esto el usuario ve "error cargando
+  // configuracion" en el movil aunque la config se haya guardado bien.
+  // Durante el grace seguimos atendiendo peticiones (assets, favicon, etc).
+  Serial.println("[NET] Deteniendo portal cautivo (grace 3.5s)...");
+  const uint32_t graceEnd = millis() + 3500;
+  while ((int32_t)(graceEnd - millis()) > 0) {
+    dnsServer.processNextRequest();
+    server.handleClient();
+    delay(10);
+  }
+
   server.stop();
   dnsServer.stop();
   WiFi.softAPdisconnect(true);
-  
+
   portalActive = false;
-  
+
   Serial.println("[NET] Portal cautivo detenido");
 }
 
