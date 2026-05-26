@@ -40,12 +40,12 @@ static void internalCallback(char* topic, byte* payload, unsigned int length) {
 
 void mqttBegin() {
   // Configurar buffer más grande para mensajes
-  mqttClient.setBufferSize(1024);
+  mqttClient.setBufferSize(2048);
   // Keepalive más largo para conexiones lentas
   mqttClient.setKeepAlive(60);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(internalCallback);
-  Serial.printf("[MQTT] Configurado: %s:%d (buffer: 1024, keepalive: 60s)\n", MQTT_HOST, MQTT_PORT);
+  Serial.printf("[MQTT] Configurado: %s:%d (buffer: 2048, keepalive: 60s)\n", MQTT_HOST, MQTT_PORT);
 }
 
 bool mqttConnect(const AppConfig& cfg) {

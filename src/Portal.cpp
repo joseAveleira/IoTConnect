@@ -195,35 +195,30 @@ const char HTML_PORTAL[] PROGMEM = R"html(
 </html>
 )html";
 
-// Pagina final del portal: se muestra tras guardar la configuracion.
-// IMPORTANTE: no debe contener auto-redirects ni fetches background. Una vez
-// el dispositivo guarda y cierra el AP, cualquier peticion del navegador
-// fallaria (el AP ya no existe). Esta pagina es terminal: el usuario solo
-// la lee y cierra la pestana.
 const char HTML_CONNECTING[] PROGMEM = R"html(
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{APP_NAME}} - Configuración guardada</title>
+    <title>{{APP_NAME}} - Conectando</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
-        .container { max-width: 420px; margin: 60px auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); text-align: center; }
-        .check { font-size: 56px; color: #38a169; margin: 0; line-height: 1; }
-        h1 { color: #333; margin: 18px 0 8px 0; font-size: 22px; }
-        p { color: #555; margin: 8px 0; line-height: 1.45; font-size: 15px; }
-        .hint { color: #999; font-size: 13px; margin-top: 18px; }
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; text-align: center; }
+        .container { max-width: 400px; margin: 50px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #007cba; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="check">✓</div>
-        <h1>Configuración guardada</h1>
-        <p>El dispositivo está conectándose a tu WiFi.</p>
-        <p>Ya puedes cerrar esta página.</p>
-        <p class="hint">El móvil volverá a su red habitual en unos segundos.</p>
+        <h1>Conectando...</h1>
+        <div class="spinner"></div>
+        <p>Configuración guardada. Conectando a WiFi y MQTT...</p>
+        <p>El dispositivo se reiniciará automáticamente.</p>
     </div>
+    <script>
+        setTimeout(() => { window.location.href = '/'; }, 10000);
+    </script>
 </body>
 </html>
 )html";
@@ -333,16 +328,9 @@ void handleSave() {
   }
   
   g_cfg.confirmed = true;
-
+  
   if (saveConfig(g_cfg)) {
-    // Renderizar template + dar tiempo al navegador a recibir el HTML antes
-    // de que el AP se cierre. Sin este flush+delay, el cliente veria "error
-    // cargando configuracion" en su lugar.
-    String html = replaceTemplate(HTML_CONNECTING, g_cfg);
-    server.sendHeader("Connection", "close");
-    server.send(200, "text/html", html);
-    server.client().flush();
-    delay(800);
+    server.send(200, "text/html", HTML_CONNECTING);
     Serial.println("[CFG] Configuración guardada, saliendo del portal");
   } else {
     server.send(500, "text/plain", "Error guardando configuración");
@@ -436,26 +424,15 @@ void startPortal() {
 
 void stopPortal() {
   if (!portalActive) return;
-
-  // Grace period: mantener el AP unos segundos mas para que el navegador del
-  // usuario reciba la respuesta de /save y renderice la pagina de exito ANTES
-  // de que la red desaparezca. Sin esto el usuario ve "error cargando
-  // configuracion" en el movil aunque la config se haya guardado bien.
-  // Durante el grace seguimos atendiendo peticiones (assets, favicon, etc).
-  Serial.println("[NET] Deteniendo portal cautivo (grace 3.5s)...");
-  const uint32_t graceEnd = millis() + 3500;
-  while ((int32_t)(graceEnd - millis()) > 0) {
-    dnsServer.processNextRequest();
-    server.handleClient();
-    delay(10);
-  }
-
+  
+  Serial.println("[NET] Deteniendo portal cautivo...");
+  
   server.stop();
   dnsServer.stop();
   WiFi.softAPdisconnect(true);
-
+  
   portalActive = false;
-
+  
   Serial.println("[NET] Portal cautivo detenido");
 }
 
